@@ -95,7 +95,7 @@ export async function transferController(req: Request, res: Response) {
       const totalDebit = amount + fee; // sender pays amount + fee
 
       if (fromUser.balance < totalDebit) {
-        // failed transaction record
+        // failed transaction
         const txn = await Transfer.create(
           [
             {
