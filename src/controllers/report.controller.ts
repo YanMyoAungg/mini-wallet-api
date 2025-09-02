@@ -136,7 +136,7 @@ export async function userReport(req: Request, res: Response) {
   }
 }
 
-export async function transferReport(req: Request, res: Response) {
+export async function transactionReport(req: Request, res: Response) {
   try {
     const { transactionId, status, type } = req.query;
     const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10));
