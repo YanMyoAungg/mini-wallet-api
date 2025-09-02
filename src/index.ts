@@ -2,21 +2,22 @@ import express from "express";
 import dotenv from "dotenv";
 import { connectDB } from "./database/db.js";
 import cashinRoutes from "./routes/cashIn.route";
+import transferRoute from "./routes/transfer.route.js";
 
 dotenv.config({ path: "../.env" });
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 connectDB().catch((err) => {
   console.error("DB connect error:", err);
   process.exit(1);
 });
-console.log("MONGO_URI =", process.env.MONGO_URI);
 
-// app.use("/api/v1/cash-in", cashinRoutes);
+app.use("/api/v1", cashinRoutes);
 
-app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+app.use("/api/v1", transferRoute);
 
-const PORT = process.env.PORT ?? 3000;
-app.listen(PORT, () => console.log(`Listening on ${PORT}`));
+const port = process.env.port ?? 3000;
+app.listen(port, () => console.log(`application is listening on ${port}`));

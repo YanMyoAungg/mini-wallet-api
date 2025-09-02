@@ -1,31 +1,36 @@
-import type { Request, Response } from "express";
+import express from "express";
 import mongoose from "mongoose";
 import { Company } from "../models/company.model";
 import { User } from "../models/user.model";
-import { Transaction } from "../models/transaction.model";
+import { Transfer } from "../models/transfer.model";
+import { calculateTransferFee } from "../config/utils/fee";
 
-export async function cashInController(req: Request, res: Response) {
+export async function cashInController(
+  req: express.Request,
+  res: express.Response
+) {
   const idempotencyKey = (req.header("Idempotency-Key") || "") as string;
-  const { userId, amount } = req.body;
+  const { userId } = req.body;
+  const amount = parseInt(req.body.amount, 10);
 
-  if (!Number.isInteger(amount) || amount <= 0) {
-    return res.status(400).json({ error: "Amount must be a positive integer" });
-  }
+  if (!Number.isInteger(amount) || amount <= 0)
+    return "amount must be a positive integer";
 
   // Idempotency guard
-  const existing = await Transaction.findOne({ idempotencyKey });
-  if (existing) return res.status(200).json(existing);
+  const exist = await Transfer.findOne({ idempotencyKey });
+  if (exist) return res.status(200).json(exist);
+  console.log("output of req", req.body);
 
-  const company = await Company.findById("company");
-  if (!company)
+  const company = await Company.findById("AYA Bank");
+  if (!company) {
     return res.status(500).json({ error: "Company not initialized" });
+  }
 
   const user = await User.findById(userId);
   if (!user) return res.status(404).json({ error: "User not found" });
+  console.log("still working");
 
-  // compute fee rule (example: 0.1% for >=100001)
-  let fee = 0;
-  if (amount >= 100001) fee = Math.floor(amount * 0.001);
+  const fee = calculateTransferFee(amount);
   const net = amount - fee;
 
   if (company.balance < amount)
@@ -40,12 +45,12 @@ export async function cashInController(req: Request, res: Response) {
     company.balance = company.balance - amount + fee;
     await company.save({ session });
 
-    const txn = await Transaction.create(
+    const cashIn = await Transfer.create(
       [
         {
           type: "cashin",
           fromAccountType: "company",
-          fromCompanyId: "company",
+          fromCompanyId: company._id,
           toAccountType: "user",
           toUserId: user._id,
           amount,
@@ -61,7 +66,7 @@ export async function cashInController(req: Request, res: Response) {
 
     await session.commitTransaction();
     session.endSession();
-    return res.status(201).json(txn[0]);
+    return res.status(201).json({ cashIn });
   } catch (err) {
     await session.abortTransaction();
     session.endSession();

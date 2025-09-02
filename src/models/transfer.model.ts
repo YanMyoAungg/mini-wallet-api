@@ -1,10 +1,10 @@
 import { Schema, model, Document, Types } from "mongoose";
 
-export type TxType = "cashin" | "transfer";
+export type transactionType = "cashin" | "transfer";
 export type FeeType = "credit" | "debit";
 
-export interface Transaction extends Document {
-  type: TxType;
+export interface Transfer extends Document {
+  type: transactionType;
   fromAccountType: "company" | "user";
   fromCompanyId?: string | null;
   fromUserId?: Types.ObjectId | null;
@@ -20,7 +20,7 @@ export interface Transaction extends Document {
   createdAt: Date;
 }
 
-const transactionSchema = new Schema<Transaction>({
+const transferSchema = new Schema<Transfer>({
   type: { type: String, enum: ["cashin", "transfer"], required: true },
   fromAccountType: { type: String, enum: ["company", "user"], required: true },
   fromCompanyId: { type: String, default: null },
@@ -41,4 +41,4 @@ const transactionSchema = new Schema<Transaction>({
   createdAt: { type: Date, default: Date.now },
 });
 
-export const Transaction = model<Transaction>("Transaction", transactionSchema);
+export const Transfer = model<Transfer>("Transaction", transferSchema);
