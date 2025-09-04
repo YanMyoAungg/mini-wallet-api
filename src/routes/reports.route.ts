@@ -6,7 +6,10 @@ import {
 
 const router = Router();
 
-router.get("/users", userReport);
-router.get("/transactions", transactionReport);
+const userReportRoute = router.get("/report/users", userReport);
+const transactionReportRoute = router.get(
+  "/report/transactions",
+  transactionReport
+);
 
-export default router;
+export { userReportRoute, transactionReportRoute };
