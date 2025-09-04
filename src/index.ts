@@ -3,6 +3,10 @@ import dotenv from "dotenv";
 import { connectDB } from "./database/db.js";
 import cashinRoutes from "./routes/cashIn.route";
 import transferRoute from "./routes/transfer.route.js";
+import {
+  transactionReportRoute,
+  userReportRoute,
+} from "./routes/reports.route.js";
 
 dotenv.config({ path: "../.env" });
 
@@ -19,5 +23,10 @@ app.use("/api/v1", cashinRoutes);
 
 app.use("/api/v1", transferRoute);
 
+app.use("/api/v1", userReportRoute);
+
+app.use("/api/v1", transactionReportRoute);
+
 const port = process.env.port ?? 3000;
 app.listen(port, () => console.log(`application is listening on ${port}`));
+export default app;
