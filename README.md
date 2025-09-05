@@ -38,7 +38,11 @@ This project is a simple wallet system API built with **Express.js**, **MongoDB 
 	```
 4. **Run tests:**
 	```bash
-	npm test
+	npm run test
+	```
+ 4. **Run Seeder:**
+	```bash
+	npm run seed
 	```
 
 ---
@@ -50,12 +54,13 @@ All endpoints are prefixed with `/api/v1/`.
 
 ### Cash In
 
-- `POST /api/v1/cashIn`
+- `POST /api/v1/cash-in`
 	- Cash in from company to one user or all users.
 	- **Body:**
 		- `userId` (optional, string): If provided, cash in to a single user. If omitted, the specified `amount` will be credited to every user in the system (company must have sufficient balance for all users).
 		- `amount` (number, required): Amount to cash in per user.
-		- `idempotencyKey` (string, required): Unique key for idempotency. When cashing in to all users, a unique key will be generated for each user using this base key.
+	- **Header:**
+		- `idempotencyKey` (string, required): Unique key for idempotency.
 	- **Behavior:**
 		- If `userId` is omitted, the company balance is debited by `amount * number of users`, and each user receives `amount - fee` (fee is calculated per user).
 		- If `userId` is provided, only that user receives the cash-in.
@@ -68,6 +73,7 @@ All endpoints are prefixed with `/api/v1/`.
 		- `fromUserId` (string, required): Sender's user ID.
 		- `toUserId` (string, required): Recipient's user ID.
 		- `amount` (number, required): Amount to transfer.
+	- **Header:**
 		- `idempotencyKey` (string, required): Unique key for idempotency.
 
 ### Reports
@@ -87,7 +93,7 @@ All endpoints are prefixed with `/api/v1/`.
 - `src/controllers/` - Route handlers
 - `src/services/` - Business logic
 - `src/models/` - Mongoose models
-- `src/routes/` - API route definitions
+- `src/routes/` - API routes
 - `src/middleware/` - Middleware (e.g., idempotency)
 - `src/database/` - Database connection
 - `src/utils/` - Utility functions
