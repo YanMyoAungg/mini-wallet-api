@@ -8,7 +8,6 @@ export interface User extends Document {
 }
 
 const userSchema = new Schema<User>({
-  _id: { type: Schema.Types.ObjectId, auto: true },
   name: { type: String, required: true },
   phone: { type: String, required: true, unique: true },
   balance: { type: Number, default: 0 },

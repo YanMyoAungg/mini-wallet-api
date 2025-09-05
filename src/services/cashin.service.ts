@@ -22,46 +22,105 @@ export async function cashInService(req: Request, res: Response) {
     return res.status(500).json({ error: "Company not initialized" });
   }
 
-  const user = await User.findById(userId);
-  if (!user) return res.status(404).json({ error: "User not found" });
+  // Cash in to a single user, if user id is provided
+  if (userId) {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-  const fee = calculateCashInFee(amount);
-  const net = amount - fee;
+    const fee = calculateCashInFee(amount);
+    const net = amount - fee;
 
-  if (company.balance < amount)
+    if (company.balance < amount)
+      return res.status(400).json({ error: "INSUFFICIENT_COMPANY_FUNDS" });
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      user.balance += net;
+      await user.save({ session });
+
+      company.balance = company.balance - amount + fee;
+      await company.save({ session });
+
+      const cashIn = await Transfer.create(
+        [
+          {
+            type: "cashin",
+            fromAccountType: "company",
+            fromCompanyId: company._id,
+            toAccountType: "user",
+            toUserId: user._id,
+            amount,
+            fee,
+            feeType: "credit",
+            companyDelta: -amount + fee,
+            status: "SUCCESS",
+            idempotencyKey,
+          },
+        ],
+        { session }
+      );
+
+      await session.commitTransaction();
+      session.endSession();
+      return res.status(201).json({ cashIn });
+    } catch (err) {
+      await session.abortTransaction();
+      session.endSession();
+      return res
+        .status(500)
+        .json({ error: "TRANSACTION_FAILED", details: (err as Error).message });
+    }
+  }
+
+  // Cash in to all users, if no user id is provided
+  const users = await User.find();
+  if (!users.length) return res.status(404).json({ error: "No users found" });
+
+  const totalAmount = amount * users.length;
+  if (company.balance < totalAmount)
     return res.status(400).json({ error: "INSUFFICIENT_COMPANY_FUNDS" });
 
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    user.balance += net;
-    await user.save({ session });
+    const cashInResults = [];
+    for (const user of users) {
+      const fee = calculateCashInFee(amount);
+      const net = amount - fee;
+      user.balance += net;
+      await user.save({ session });
 
-    company.balance = company.balance - amount + fee;
+      const transfer = await Transfer.create(
+        [
+          {
+            type: "cashin",
+            fromAccountType: "company",
+            fromCompanyId: company._id,
+            toAccountType: "user",
+            toUserId: user._id,
+            amount,
+            fee,
+            feeType: "credit",
+            companyDelta: -amount + fee,
+            status: "SUCCESS",
+            idempotencyKey: `${idempotencyKey}:${user._id}`,
+          },
+        ],
+        { session }
+      );
+      cashInResults.push(transfer[0]);
+    }
+
+    company.balance =
+      company.balance -
+      totalAmount +
+      cashInResults.reduce((sum, t) => (t ? sum + t.fee : sum), 0);
     await company.save({ session });
-
-    const cashIn = await Transfer.create(
-      [
-        {
-          type: "cashin",
-          fromAccountType: "company",
-          fromCompanyId: company._id,
-          toAccountType: "user",
-          toUserId: user._id,
-          amount,
-          fee,
-          feeType: "credit",
-          companyDelta: -amount + fee,
-          status: "SUCCESS",
-          idempotencyKey,
-        },
-      ],
-      { session }
-    );
 
     await session.commitTransaction();
     session.endSession();
-    return res.status(201).json({ cashIn });
+    return res.status(201).json({ cashIn: cashInResults });
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
